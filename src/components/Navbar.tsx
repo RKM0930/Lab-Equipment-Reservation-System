@@ -21,7 +21,7 @@ function RoleBadge({ role }: { role: UserRole }) {
       ) : (
         <GraduationCap className="h-3 w-3" aria-hidden="true" />
       )}
-      {isCustodian ? 'Custodian' : 'Student / Faculty Borrower'}
+      {isCustodian ? 'Laboratory Custodian' : 'Student / Faculty Borrower'}
     </span>
   );
 }

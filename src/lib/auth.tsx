@@ -57,10 +57,20 @@ interface ProviderProps {
   children: ReactNode;
 }
 
+const CUSTODIAN_EMAIL_DOMAIN = '@custodian.com';
+
 function normalizeClerkRole(value: unknown): UserRole {
   if (value === 'custodian') return 'custodian';
   if (value === 'faculty') return 'faculty';
   return 'student';
+}
+
+/** A @custodian.com email grants custodian access; otherwise Clerk metadata decides. */
+function resolveClerkRole(email: string, metadataRole: unknown): UserRole {
+  if (email.trim().toLowerCase().endsWith(CUSTODIAN_EMAIL_DOMAIN)) {
+    return 'custodian';
+  }
+  return normalizeClerkRole(metadataRole);
 }
 
 export function ClerkAuthProvider({ children }: ProviderProps) {
@@ -79,7 +89,7 @@ export function ClerkAuthProvider({ children }: ProviderProps) {
       id: userId,
       fullName: user?.fullName || user?.username || fallbackName,
       email,
-      role: normalizeClerkRole(metadataRole),
+      role: resolveClerkRole(email, metadataRole),
       avatarUrl: user?.imageUrl,
       isClerkUser: true,
     };

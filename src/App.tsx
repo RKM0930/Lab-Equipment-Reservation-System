@@ -101,8 +101,8 @@ function AlertBanner({ alert, onDismiss }: AlertBannerProps) {
 
 export default function App() {
   const { user, isSignedIn, signIn } = useSession();
-  // ClerkAuthProvider maps this role directly from Clerk's server-controlled
-  // publicMetadata.role. Demo mode is borrower-only and can never set it.
+  // ClerkAuthProvider maps this from Clerk's publicMetadata.role or a
+  // @custodian.com email. Demo mode is borrower-only and can never set it.
   const isCustodian = user?.role === 'custodian';
 
   const [equipment, setEquipment] = useState<Equipment[]>([]);

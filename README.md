@@ -19,7 +19,7 @@ reservation, cancellation, and return. It is built with **React + TypeScript + V
 
 | Requirement | Implementation |
 | --- | --- |
-| **FR-01 Authentication & roles** | Clerk modal sign-in when configured; built-in borrower-only demo sign-in otherwise. Role is read from Clerk `publicMetadata.role` (`custodian`, `faculty`, or `student`). Booking requires authentication. |
+| **FR-01 Authentication & roles** | Clerk modal sign-in when configured; built-in borrower-only demo sign-in otherwise. Role comes from Clerk `publicMetadata.role` (`custodian`, `faculty`, or `student`) or a `@custodian.com` email. Booking requires authentication. |
 | **FR-02 Catalog & live search** | Supabase equipment query with item code, name, category, availability count/progress bar, and an **Out of stock** label. Instant keyword search plus category filter. |
 | **FR-03 Validated reservation creation** | Reservation modal validates quantity, date, and time slot, re-checks stock, deducts inventory, and creates an `ACTIVE` reservation with a receipt code. |
 | **FR-04 Reservation cancellation** | Borrowers can cancel their own `ACTIVE` reservations; custodians can cancel any. Status becomes `CANCELLED` and stock is restored. |
@@ -95,8 +95,9 @@ Restart the Vite server after changing environment variables.
    { "role": "custodian" }
    ```
 
-   Accepted values are `custodian`, `faculty`, or `student` (default). The UI reads this value
-   from Clerk and shows a **Custodian** badge only for `custodian`; every other role gets the
+   Accepted values are `custodian`, `faculty`, or `student` (default). Any Clerk account whose
+   primary email ends with `@custodian.com` is automatically treated as a custodian. The header
+   shows a **Laboratory Custodian** badge for custodians; every other role gets the
    **Student / Faculty Borrower** badge. There is no manual role switcher.
 
 The app uses `<SignedIn>`, `<SignedOut>`, `<SignInButton>`, and `<UserButton>` from
@@ -159,7 +160,7 @@ Successful operations show a green receipt banner, for example:
   `schema.sql`.
 - **Auth fallback:** if the Clerk key is missing or a placeholder, a demo identity dialog captures
   full name, email, and student/faculty role. Demo mode is borrower-only; custodian tools require
-  a Clerk account with `publicMetadata.role = "custodian"`.
+  a Clerk account with `publicMetadata.role = "custodian"` or a `@custodian.com` email.
 - **Reset:** in local mode, use **Reset demo data** in the footer to restore seed inventory and
   remove demo reservations. Clearing site storage also works.
 - **Source indicator:** the dashboard shows **Demo data** or **Supabase connected** so presenters
