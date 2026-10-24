@@ -58,8 +58,3 @@ export function pluralize(count: number, singular: string, plural = `${singular}
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
-export function roleLabel(role: string): string {
-  if (role === 'custodian') return 'Laboratory custodian';
-  if (role === 'faculty') return 'Faculty borrower';
-  return 'Student borrower';
-}

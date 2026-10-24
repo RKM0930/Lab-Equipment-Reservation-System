@@ -13,7 +13,7 @@ import type { Equipment } from '../types/lab';
 interface EquipmentCatalogProps {
   equipment: Equipment[];
   loading: boolean;
-  isCustodianView: boolean;
+  isCustodian: boolean;
   onReserve: (equipment: Equipment) => void;
   onRegister: () => void;
 }
@@ -37,7 +37,7 @@ function CatalogSkeleton() {
 export function EquipmentCatalog({
   equipment,
   loading,
-  isCustodianView,
+  isCustodian,
   onReserve,
   onRegister,
 }: EquipmentCatalogProps) {
@@ -89,13 +89,13 @@ export function EquipmentCatalog({
             Equipment catalog
           </h2>
           <p className="mt-0.5 text-sm text-slate-500">
-            {isCustodianView
+            {isCustodian
               ? 'Register items and monitor live availability.'
               : 'Reserve equipment for your next lab session.'}
           </p>
         </div>
 
-        {isCustodianView ? (
+        {isCustodian ? (
           <button type="button" onClick={onRegister} className="btn-primary px-3.5 py-2 text-xs">
             <Plus className="h-4 w-4" aria-hidden="true" />
             Register equipment
@@ -189,12 +189,12 @@ export function EquipmentCatalog({
             </h3>
             <p className="mt-1 max-w-md text-xs leading-5 text-slate-500">
               {equipment.length === 0
-                ? isCustodianView
+                ? isCustodian
                   ? 'Register the first laboratory item to start accepting reservations.'
                   : 'The catalog is empty. Ask a laboratory custodian to register equipment first.'
                 : 'Try a different keyword or category, or clear the filters to see the full catalog.'}
             </p>
-            {equipment.length === 0 && isCustodianView ? (
+            {equipment.length === 0 && isCustodian ? (
               <button type="button" onClick={onRegister} className="btn-primary mt-4 px-3.5 py-2 text-xs">
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 Register equipment
@@ -266,7 +266,7 @@ export function EquipmentCatalog({
                       />
                     </div>
 
-                    {!isCustodianView ? (
+                    {!isCustodian ? (
                       <button
                         type="button"
                         onClick={() => onReserve(item)}

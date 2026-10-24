@@ -7,7 +7,7 @@ import {
   RotateCcw,
   XCircle,
 } from 'lucide-react';
-import type { AuthUser, Reservation, ReservationStatus, UserRole } from '../types/lab';
+import type { AuthUser, Reservation, ReservationStatus } from '../types/lab';
 import { Modal } from './ui/Modal';
 import { formatDate, formatTimeSlot, formatTimestamp, pluralize } from '../lib/format';
 import { toErrorMessage } from '../services/reservationService';
@@ -18,7 +18,6 @@ interface ReservationLogProps {
   reservations: Reservation[];
   loading: boolean;
   user: AuthUser | null;
-  activeRole: UserRole;
   onCancel: (reservation: Reservation) => Promise<void>;
   onReturn: (reservation: Reservation) => void;
   onSignIn: () => void;
@@ -208,7 +207,6 @@ export function ReservationLog({
   reservations,
   loading,
   user,
-  activeRole,
   onCancel,
   onReturn,
   onSignIn,
@@ -234,7 +232,7 @@ export function ReservationLog({
     [reservations, statusFilter],
   );
 
-  const isCustodian = activeRole === 'custodian';
+  const isCustodian = user?.role === 'custodian';
 
   return (
     <section id="reservations" className="scroll-mt-24" aria-labelledby="reservation-log-heading">

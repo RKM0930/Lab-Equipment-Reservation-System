@@ -1,5 +1,5 @@
 -- ============================================================================
--- Laboratory Equipment Reservation System
+-- ReserveLab — laboratory equipment reservation schema
 -- Supabase / PostgreSQL schema
 -- ----------------------------------------------------------------------------
 -- Run this entire file in the Supabase Dashboard → SQL Editor.
@@ -9,7 +9,7 @@
 -- This client-only demo talks to Supabase with the public anon key and does not
 -- enable RLS because Clerk identities are not Supabase auth.uid() users. Before
 -- production use, move mutations into SECURITY DEFINER functions or an edge
--- function, enable RLS, and remove the demo role switcher's privilege bypass.
+-- function, enable RLS, and enforce custodian roles from trusted metadata.
 -- ============================================================================
 
 create extension if not exists pgcrypto;

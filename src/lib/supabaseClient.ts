@@ -1,11 +1,14 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Equipment, Reservation } from '../types/lab';
+import { ENV } from '../config/env';
 
-const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL ?? '').trim();
-const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY ?? '').trim();
+const supabaseUrl = ENV.SUPABASE_URL;
+const supabaseAnonKey = ENV.SUPABASE_ANON_KEY;
 
 function isValidSupabaseUrl(value: string): boolean {
-  if (!value || value.includes('your-project')) return false;
+  if (!value || value.includes('your-project') || value.includes('placeholder')) {
+    return false;
+  }
 
   try {
     const parsed = new URL(value);
@@ -28,6 +31,15 @@ function isValidSupabaseKey(value: string): boolean {
  */
 export const isSupabaseConfigured =
   isValidSupabaseUrl(supabaseUrl) && isValidSupabaseKey(supabaseAnonKey);
+
+if (!isSupabaseConfigured) {
+  const hasEnvValues = Boolean(supabaseUrl && supabaseAnonKey);
+  console.warn(
+    hasEnvValues
+      ? 'Supabase environment variables are present but invalid. ReserveLab will use its local demo database.'
+      : 'Supabase environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) are missing. Check your .env file. ReserveLab will use its local demo database.',
+  );
+}
 
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {

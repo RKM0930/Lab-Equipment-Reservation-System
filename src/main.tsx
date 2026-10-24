@@ -2,11 +2,11 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ClerkProvider } from '@clerk/clerk-react';
 import App from './App';
+import { ENV } from './config/env';
 import {
   ClerkAuthProvider,
   DemoAuthProvider,
   clerkAfterSignOutUrl,
-  clerkPublishableKey,
   isClerkConfigured,
 } from './lib/auth';
 import './index.css';
@@ -21,7 +21,7 @@ createRoot(rootElement).render(
   <StrictMode>
     {isClerkConfigured ? (
       <ClerkProvider
-        publishableKey={clerkPublishableKey}
+        publishableKey={ENV.CLERK_PUBLISHABLE_KEY}
         afterSignOutUrl={clerkAfterSignOutUrl}
       >
         <ClerkAuthProvider>

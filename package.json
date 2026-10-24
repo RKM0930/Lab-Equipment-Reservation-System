@@ -1,9 +1,9 @@
 {
-  "name": "lab-equipment-reservation-system",
+  "name": "reservelab",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "A full-stack laboratory equipment reservation prototype built with React, Clerk, Supabase, and Tailwind CSS.",
+  "description": "ReserveLab — a full-stack laboratory equipment reservation prototype built with React, Clerk, Supabase, and Tailwind CSS.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

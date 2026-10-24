@@ -11,8 +11,9 @@ import { useAuth as useClerkAuth, useClerk, useUser } from '@clerk/clerk-react';
 import { GraduationCap } from 'lucide-react';
 import type { AuthUser, UserRole } from '../types/lab';
 import { Modal } from '../components/ui/Modal';
+import { ENV } from '../config/env';
 
-export const clerkPublishableKey = (import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ?? '').trim();
+export const clerkPublishableKey = ENV.CLERK_PUBLISHABLE_KEY;
 
 /** A publishable key is the only requirement for enabling real Clerk auth. */
 export const isClerkConfigured =
@@ -20,6 +21,12 @@ export const isClerkConfigured =
   clerkPublishableKey.length > 30 &&
   !clerkPublishableKey.toLowerCase().includes('your_') &&
   !clerkPublishableKey.toLowerCase().includes('placeholder');
+
+if (!isClerkConfigured) {
+  console.warn(
+    'Clerk publishable key is missing or invalid. ReserveLab will use its built-in demo authentication.',
+  );
+}
 
 export type AuthMode = 'clerk' | 'demo';
 
@@ -124,7 +131,7 @@ function readStoredDemoUser(): AuthUser | null {
       typeof parsed.id === 'string' &&
       typeof parsed.fullName === 'string' &&
       typeof parsed.email === 'string' &&
-      (parsed.role === 'student' || parsed.role === 'faculty' || parsed.role === 'custodian')
+      (parsed.role === 'student' || parsed.role === 'faculty')
     ) {
       return { ...parsed, id: parsed.id, fullName: parsed.fullName, email: parsed.email, role: parsed.role };
     }
@@ -167,7 +174,7 @@ interface DemoSignInDialogProps {
 function DemoSignInDialog({ open, initialProfile, onClose, onSubmit }: DemoSignInDialogProps) {
   const [fullName, setFullName] = useState(initialProfile.fullName);
   const [email, setEmail] = useState(initialProfile.email);
-  const [role, setRole] = useState<'student' | 'faculty'>(
+  const [borrowerType, setBorrowerType] = useState<'student' | 'faculty'>(
     initialProfile.role === 'faculty' ? 'faculty' : 'student',
   );
   const [error, setError] = useState<string | null>(null);
@@ -176,7 +183,7 @@ function DemoSignInDialog({ open, initialProfile, onClose, onSubmit }: DemoSignI
     if (!open) return;
     setFullName(initialProfile.fullName);
     setEmail(initialProfile.email);
-    setRole(initialProfile.role === 'faculty' ? 'faculty' : 'student');
+    setBorrowerType(initialProfile.role === 'faculty' ? 'faculty' : 'student');
     setError(null);
   }, [open, initialProfile]);
 
@@ -198,7 +205,7 @@ function DemoSignInDialog({ open, initialProfile, onClose, onSubmit }: DemoSignI
       id: `demo-${normalizedEmail}`,
       fullName: trimmedName,
       email: normalizedEmail,
-      role,
+      role: borrowerType,
       isClerkUser: false,
     });
   }
@@ -260,11 +267,11 @@ function DemoSignInDialog({ open, initialProfile, onClose, onSubmit }: DemoSignI
                 key={option}
                 type="button"
                 onClick={() => {
-                  setRole(option);
+                  setBorrowerType(option);
                   setError(null);
                 }}
                 className={`rounded-lg px-3 py-2 text-sm font-semibold capitalize transition ${
-                  role === option
+                  borrowerType === option
                     ? 'bg-white text-emerald-700 shadow-sm ring-1 ring-slate-200'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
@@ -282,7 +289,8 @@ function DemoSignInDialog({ open, initialProfile, onClose, onSubmit }: DemoSignI
         ) : null}
 
         <p className="rounded-lg bg-slate-50 px-3 py-2.5 text-xs leading-5 text-slate-500">
-          Custodian tools are available through the Demo view switch after signing in.
+          Demo access is limited to student and faculty borrowers. Custodian access requires a
+          Clerk account with the custodian role.
         </p>
 
         <button type="submit" className="btn-primary w-full">
@@ -314,16 +322,21 @@ export function DemoAuthProvider({ children }: ProviderProps) {
   }, []);
 
   const handleDemoLogin = useCallback((nextUser: AuthUser) => {
-    setUser(nextUser);
+    // Demo mode is intentionally borrower-only. Custodian access is granted
+    // exclusively through Clerk's server-controlled public metadata.
+    const borrowerRole: UserRole = nextUser.role === 'faculty' ? 'faculty' : 'student';
+    const safeUser = { ...nextUser, role: borrowerRole };
+
+    setUser(safeUser);
     setLoginOpen(false);
     try {
-      window.localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(nextUser));
+      window.localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(safeUser));
       window.localStorage.setItem(
         DEMO_PROFILE_KEY,
         JSON.stringify({
-          fullName: nextUser.fullName,
-          email: nextUser.email,
-          role: nextUser.role,
+          fullName: safeUser.fullName,
+          email: safeUser.email,
+          role: safeUser.role,
         }),
       );
     } catch {
@@ -357,4 +370,4 @@ export function DemoAuthProvider({ children }: ProviderProps) {
 }
 
 /** Small helper used by Clerk's UserButton to keep sign-out routing consistent. */
-export const clerkAfterSignOutUrl = (import.meta.env.VITE_CLERK_AFTER_SIGN_OUT_URL ?? '').trim() || '/';
+export const clerkAfterSignOutUrl = ENV.CLERK_AFTER_SIGN_OUT_URL || '/';

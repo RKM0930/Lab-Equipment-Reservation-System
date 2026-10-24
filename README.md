@@ -1,7 +1,7 @@
-# Laboratory Equipment Reservation System
+# ReserveLab
 
-A functional full-stack prototype for **Task 3: Software Implementation** of **Laboratory 6**
-(BCS45 / S-CSSE421LA Software Engineering 2).
+**ReserveLab** is a functional full-stack prototype for **Task 3: Software Implementation**
+of **Laboratory 6** (BCS45 / S-CSSE421LA Software Engineering 2).
 
 The application lets students and faculty reserve laboratory equipment, lets custodians
 register inventory and process returns, and keeps available stock synchronized through every
@@ -19,7 +19,7 @@ reservation, cancellation, and return. It is built with **React + TypeScript + V
 
 | Requirement | Implementation |
 | --- | --- |
-| **FR-01 Authentication & roles** | Clerk modal sign-in when configured; built-in demo sign-in otherwise. User ID, full name, email, and student/faculty/custodian role are captured. Booking requires authentication. |
+| **FR-01 Authentication & roles** | Clerk modal sign-in when configured; built-in borrower-only demo sign-in otherwise. Role is read from Clerk `publicMetadata.role` (`custodian`, `faculty`, or `student`). Booking requires authentication. |
 | **FR-02 Catalog & live search** | Supabase equipment query with item code, name, category, availability count/progress bar, and an **Out of stock** label. Instant keyword search plus category filter. |
 | **FR-03 Validated reservation creation** | Reservation modal validates quantity, date, and time slot, re-checks stock, deducts inventory, and creates an `ACTIVE` reservation with a receipt code. |
 | **FR-04 Reservation cancellation** | Borrowers can cancel their own `ACTIVE` reservations; custodians can cancel any. Status becomes `CANCELLED` and stock is restored. |
@@ -30,7 +30,7 @@ reservation, cancellation, and return. It is built with **React + TypeScript + V
 Additional implementation details:
 
 - KPI cards for **Registered equipment**, **Available units**, and **Active reservations**.
-- Custodian/Borrower demo view switcher so both workflows can be demonstrated in one session.
+- Header role badge reflects the authenticated Clerk role. There is no client-side role switcher.
 - Responsive Slate/Emerald/Zinc academic dashboard with accessible dialogs, focus trapping,
   status announcements, and reduced-motion support.
 - Demo database reset control in the footer (local mode only).
@@ -48,11 +48,12 @@ npm run dev
 
 Open <http://localhost:5173>. No `.env` file is required for the demo:
 
-1. Click **Demo sign in** and continue with the prefilled identity.
+1. Click **Demo sign in** and continue with the prefilled borrower identity.
 2. Reserve an item from the catalog.
-3. Switch to **Demo View: Custodian** in the header.
-4. Register equipment or process the active reservation's return.
-5. Use the status tabs in the Reservation log to audit activity.
+3. Use the status tabs in the Reservation log to audit activity.
+
+Custodian registration and return tools require a real Clerk account with the custodian role.
+The demo fallback is intentionally borrower-only and cannot elevate itself.
 
 Production build:
 
@@ -79,6 +80,7 @@ cp .env.example .env
 | `VITE_CLERK_AFTER_SIGN_OUT_URL` | Optional post-sign-out route. Defaults to `/`. |
 | `VITE_SUPABASE_URL` | Supabase project URL. |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anon/public API key. |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Alternative to `VITE_SUPABASE_ANON_KEY` for newer Supabase publishable keys. |
 
 Restart the Vite server after changing environment variables.
 
@@ -87,14 +89,15 @@ Restart the Vite server after changing environment variables.
 1. Create an application at <https://dashboard.clerk.com>.
 2. Copy **Publishable key** into `VITE_CLERK_PUBLISHABLE_KEY`.
 3. Enable the sign-in methods you want (email, Google, etc.) in Clerk.
-4. Optional: set a user's **public metadata** to control the initial view:
+4. Set a user's **public metadata** to assign their role:
 
    ```json
    { "role": "custodian" }
    ```
 
-   Accepted values are `custodian`, `faculty`, or `student` (default). The demo view switcher
-   can still toggle views for testing; remove that bypass for a production deployment.
+   Accepted values are `custodian`, `faculty`, or `student` (default). The UI reads this value
+   from Clerk and shows a **Custodian** badge only for `custodian`; every other role gets the
+   **Student / Faculty Borrower** badge. There is no manual role switcher.
 
 The app uses `<SignedIn>`, `<SignedOut>`, `<SignInButton>`, and `<UserButton>` from
 `@clerk/clerk-react`. If the key is absent, invalid, or a placeholder, the app falls back to a
@@ -151,11 +154,12 @@ Successful operations show a green receipt banner, for example:
 ## Demo fallback behavior
 
 - **Supabase fallback:** if `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are missing, malformed,
-  or placeholders, the app uses a defensive localStorage database (`lers.demo-database.v1`) with
-  an in-memory safety net. It is seeded with the same five items as `schema.sql`.
+  or placeholders, the app logs a configuration warning and uses a defensive localStorage database
+  (`lers.demo-database.v1`) with an in-memory safety net. It is seeded with the same five items as
+  `schema.sql`.
 - **Auth fallback:** if the Clerk key is missing or a placeholder, a demo identity dialog captures
-  full name, email, and student/faculty role. Custodian access is available through the demo view
-  switcher.
+  full name, email, and student/faculty role. Demo mode is borrower-only; custodian tools require
+  a Clerk account with `publicMetadata.role = "custodian"`.
 - **Reset:** in local mode, use **Reset demo data** in the footer to restore seed inventory and
   remove demo reservations. Clearing site storage also works.
 - **Source indicator:** the dashboard shows **Demo data** or **Supabase connected** so presenters
@@ -178,7 +182,7 @@ Successful operations show a green receipt banner, for example:
 │   ├── services/
 │   │   └── reservationService.ts   # ValidationError, validation rules, Supabase/demo CRUD
 │   ├── components/
-│   │   ├── Navbar.tsx              # Title, Clerk controls, demo view switcher
+│   │   ├── Navbar.tsx              # Brand, Clerk controls, verified role badge
 │   │   ├── KpiMetrics.tsx          # Live KPI summary cards
 │   │   ├── EquipmentCatalog.tsx    # Search, category filter, stock cards
 │   │   ├── ReservationModal.tsx    # Validated reservation form
@@ -222,7 +226,9 @@ Successful operations show a green receipt banner, for example:
 ## Manual acceptance checklist
 
 - [x] Signed-out reserve action prompts authentication and blocks booking.
-- [x] Demo sign-in captures name/email and shows the account in the header.
+- [x] Demo sign-in captures name/email and shows the borrower role badge in the header.
+- [x] Borrower accounts cannot see registration or return controls.
+- [x] No manual role switcher exists in the header.
 - [x] Catalog loads five seed items with exact availability.
 - [x] Search (`raspberry`) and category (`Optics`) filters narrow the catalog instantly.
 - [x] Valid reservation deducts stock, creates `ACTIVE`, and shows the receipt banner.
@@ -243,8 +249,8 @@ Successful operations show a green receipt banner, for example:
 This is a course prototype, not a production deployment. The main hardening items are:
 
 1. Enable Supabase RLS and move multi-step stock operations into transactional database functions.
-2. Enforce the custodian role from Clerk public metadata (or a backend) instead of the demo view
-   switcher.
+2. Enforce the custodian role from trusted Clerk metadata in server-side policies as well as the
+   UI. The current role checks are client-side because this prototype talks directly to Supabase.
 3. Add an audit trail for who processed each return in addition to the borrower identity.
 4. Add automated integration tests against a disposable Supabase project.
 

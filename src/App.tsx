@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, RotateCcw, X } from 'lucide-react';
 import type {
   CreateEquipmentDTO,
@@ -6,7 +6,6 @@ import type {
   Reservation,
   ReservationActor,
   ReservationFormValues,
-  UserRole,
 } from './types/lab';
 import { Navbar } from './components/Navbar';
 import { KpiMetrics } from './components/KpiMetrics';
@@ -102,9 +101,9 @@ function AlertBanner({ alert, onDismiss }: AlertBannerProps) {
 
 export default function App() {
   const { user, isSignedIn, signIn } = useSession();
-
-  const [activeRole, setActiveRole] = useState<UserRole>('student');
-  const previousUserId = useRef<string | null>(null);
+  // ClerkAuthProvider maps this role directly from Clerk's server-controlled
+  // publicMetadata.role. Demo mode is borrower-only and can never set it.
+  const isCustodian = user?.role === 'custodian';
 
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -116,17 +115,14 @@ export default function App() {
   const [returnTarget, setReturnTarget] = useState<Reservation | null>(null);
 
   useEffect(() => {
-    if (user?.id !== previousUserId.current) {
-      previousUserId.current = user?.id ?? null;
-      if (!user) {
-        setActiveRole('student');
-      } else {
-        // Preserve an explicitly chosen custodian demo view across sign-in,
-        // otherwise start in the role stored on the authenticated profile.
-        setActiveRole((current) => (current === 'custodian' ? current : user.role));
-      }
+    // Close role-specific dialogs immediately if the verified role changes.
+    if (isCustodian) {
+      setReservationTarget(null);
+    } else {
+      setRegisterOpen(false);
+      setReturnTarget(null);
     }
-  }, [user]);
+  }, [isCustodian]);
 
   useEffect(() => {
     if (isSignedIn) {
@@ -183,21 +179,19 @@ export default function App() {
     return message;
   }
 
-  function requireActor(isCustodianAction = false): ReservationActor {
+  function requireActor(requireCustodian = false): ReservationActor {
     if (!user || !isSignedIn) {
       throw new ValidationError('Please sign in to perform this action.');
     }
-    if (isCustodianAction && activeRole !== 'custodian') {
-      throw new ValidationError(
-        'Switch to Demo View: Custodian to register equipment or process returns.',
-      );
+    if (requireCustodian && !isCustodian) {
+      throw new ValidationError('Only laboratory custodians can perform this action.');
     }
 
     return {
       clerkUserId: user.id,
       fullName: user.fullName,
       email: user.email,
-      role: activeRole,
+      role: user.role,
     };
   }
 
@@ -212,11 +206,12 @@ export default function App() {
       return;
     }
 
-    if (activeRole === 'custodian') {
+    if (isCustodian) {
       setAlert({
         type: 'error',
-        title: 'Borrower view required',
-        message: 'Switch to Demo View: Student/Faculty to create a reservation.',
+        title: 'Borrower account required',
+        message:
+          'Custodian accounts manage inventory and returns. Sign in with a student or faculty account to reserve equipment.',
       });
       return;
     }
@@ -235,11 +230,11 @@ export default function App() {
       return;
     }
 
-    if (activeRole !== 'custodian') {
+    if (!isCustodian) {
       setAlert({
         type: 'error',
-        title: 'Custodian view required',
-        message: 'Use the Demo View switcher in the header to open custodian inventory tools.',
+        title: 'Custodian access required',
+        message: 'Only accounts with the Clerk custodian role can register equipment.',
       });
       return;
     }
@@ -258,11 +253,11 @@ export default function App() {
       return;
     }
 
-    if (activeRole !== 'custodian') {
+    if (!isCustodian) {
       setAlert({
         type: 'error',
-        title: 'Custodian view required',
-        message: 'Only the custodian view can process returns.',
+        title: 'Custodian access required',
+        message: 'Only accounts with the Clerk custodian role can process returns.',
       });
       return;
     }
@@ -277,6 +272,12 @@ export default function App() {
     if (!user) {
       const message = 'Please sign in before reserving equipment.';
       setAlert({ type: 'error', title: 'Sign-in required', message });
+      throw new ValidationError(message);
+    }
+    if (isCustodian) {
+      const message =
+        'Custodian accounts cannot create borrowing reservations. Sign in with a student or faculty account.';
+      setAlert({ type: 'error', title: 'Borrower account required', message });
       throw new ValidationError(message);
     }
 
@@ -378,7 +379,7 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Navbar activeRole={activeRole} onRoleChange={setActiveRole} />
+      <Navbar />
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {alert ? (
@@ -397,7 +398,7 @@ export default function App() {
                 Equipment dashboard
               </h1>
               <p className="mt-1 max-w-2xl text-sm text-slate-500">
-                {activeRole === 'custodian'
+                {isCustodian
                   ? 'Monitor stock, register equipment, and process returns.'
                   : 'Browse live stock, reserve equipment, and track your returns.'}
               </p>
@@ -417,7 +418,7 @@ export default function App() {
           <EquipmentCatalog
             equipment={equipment}
             loading={loading}
-            isCustodianView={activeRole === 'custodian'}
+            isCustodian={isCustodian}
             onReserve={handleReserveClick}
             onRegister={handleOpenRegister}
           />
@@ -426,7 +427,6 @@ export default function App() {
             reservations={reservations}
             loading={loading}
             user={user}
-            activeRole={activeRole}
             onCancel={handleCancelReservation}
             onReturn={handleReturnRequest}
             onSignIn={signIn}
@@ -437,7 +437,7 @@ export default function App() {
       <footer className="mt-auto border-t border-slate-200 bg-white">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-slate-500 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
           <div>
-            <p>Laboratory Equipment Reservation System</p>
+            <p className="font-medium text-slate-700">ReserveLab</p>
             <p className="mt-0.5 text-slate-500">BCS45 / S-CSSE421LA · Laboratory 6</p>
           </div>
           {!isSupabaseConfigured ? (
@@ -453,7 +453,7 @@ export default function App() {
         </div>
       </footer>
 
-      {reservationTarget && user ? (
+      {reservationTarget && user && !isCustodian ? (
         <ReservationModal
           key={`${reservationTarget.id}-${user.id}`}
           equipment={reservationTarget}
@@ -463,14 +463,14 @@ export default function App() {
         />
       ) : null}
 
-      {registerOpen && user ? (
+      {registerOpen && user && isCustodian ? (
         <RegisterEquipmentModal
           onClose={() => setRegisterOpen(false)}
           onSubmit={handleRegisterEquipment}
         />
       ) : null}
 
-      {returnTarget && user ? (
+      {returnTarget && user && isCustodian ? (
         <ReturnReservationModal
           reservation={returnTarget}
           onClose={() => setReturnTarget(null)}
